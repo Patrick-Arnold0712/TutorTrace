@@ -20,6 +20,8 @@
     padding:10px 14px;display:flex;align-items:baseline;gap:8px}
   .top b{font-size:16px}
   .top span{color:var(--muted);font-size:12px}
+  .top select{font:inherit;font-size:14px;font-weight:600;color:var(--text);background:#f4f5f7;
+    border:1px solid var(--line);border-radius:8px;padding:4px 6px;max-width:132px;-webkit-appearance:none;appearance:none}
   main{padding:12px 12px 84px;max-width:640px;margin:0 auto}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
   .card h3{margin:0 0 10px;font-size:14px;color:var(--muted);font-weight:600;letter-spacing:.02em}
@@ -71,7 +73,7 @@
 </style>
 </head>
 <body>
-<div class="top"><b>TutorTrace</b><span id="topSub"></span></div>
+<div class="top"><b>TutorTrace</b><select id="stuSelect" aria-label="选择学生"></select><span id="topSub"></span></div>
 <main>
   <!-- ============ 今天 ============ -->
   <section id="v-today">
@@ -204,7 +206,11 @@
         <span>堂听默认共几个</span>
         <input type="number" id="clsInput" min="1" max="99" style="width:90px;text-align:center">
       </div>
-      <div class="hint">只影响新建那天的默认值，已经记过的不会改。</div>
+      <div class="hint">只影响新建那天的默认值，已经记过的不会改。这里改的是页面顶部当前选中的学生。</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="addStuBtn">＋ 添加学生</button>
+        <button class="btn" id="delStuBtn" style="color:var(--bad)">删除当前学生</button>
+      </div>
     </div>
 
     <div class="card">
@@ -228,7 +234,7 @@
     </div>
 
     <div class="card">
-      <button class="btn" id="clearBtn" style="color:var(--bad)">清空全部记录</button>
+      <button class="btn" id="clearBtn" style="color:var(--bad)">清空所有学生的记录</button>
     </div>
   </section>
 </main>
@@ -250,14 +256,68 @@ const KEY = "xueqing.v1";
 const LEVELS = ["A", "B", "C", "D"];
 const LVNUM = { A: 4, B: 3, C: 2, D: 1 };
 
+function uid() {
+  return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+function newStudentObj(name) {
+  return { id: uid(), name: name || "", grade: "", dictTotal: 8, clsTotal: 8 };
+}
 function blank() {
+  const s = newStudentObj("");
   return {
-    version: 2,
-    student: { name: "", grade: "", dictTotal: 8, clsTotal: 8 },
-    records: {},
-    focus: {},          // "2026-10-20" -> 本周最需要练的一句
+    version: 3,
+    students: [s],       // 学生列表
+    curId: s.id,         // 当前选中的学生
+    records: {},         // records[studentId][date] -> {dict, cls, hw}
+    focus: {},           // focus[studentId]["2026-10-20"] -> 本周最需要练的一句
     lastExportAt: null
   };
+}
+
+// 把旧版（v1/v2 单学生）或 v3 数据统一整理成 v3 结构
+function toV3(d) {
+  if (d && Array.isArray(d.students) && d.students.length) {
+    const students = d.students.map(s => ({
+      id: s.id || uid(),
+      name: s.name || "",
+      grade: s.grade || "",
+      dictTotal: s.dictTotal || 8,
+      clsTotal: s.clsTotal || 8
+    }));
+    const records = d.records || {}, focus = d.focus || {};
+    students.forEach(s => {
+      if (!records[s.id] || typeof records[s.id] !== "object") records[s.id] = {};
+      if (!focus[s.id] || typeof focus[s.id] !== "object") focus[s.id] = {};
+    });
+    const ids = students.map(s => s.id);
+    return {
+      version: 3,
+      students: students,
+      curId: ids.indexOf(d.curId) >= 0 ? d.curId : ids[0],
+      records: records,
+      focus: focus,
+      lastExportAt: d.lastExportAt || null
+    };
+  }
+  // 旧版单学生 → 迁移成第一个学生
+  const s = newStudentObj("");
+  if (d && d.student) Object.assign(s, {
+    name: d.student.name || "",
+    grade: d.student.grade || "",
+    dictTotal: d.student.dictTotal || 8,
+    clsTotal: d.student.clsTotal || 8
+  });
+  const out = {
+    version: 3,
+    students: [s],
+    curId: s.id,
+    records: {},
+    focus: {},
+    lastExportAt: (d && d.lastExportAt) || null
+  };
+  out.records[s.id] = (d && d.records) || {};
+  out.focus[s.id] = (d && d.focus) || {};
+  return out;
 }
 
 let DB = load();
@@ -266,19 +326,27 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return blank();
-    const d = JSON.parse(raw);
-    const b = blank();
-    return {
-      version: 2,
-      student: Object.assign(b.student, d.student || {}),
-      records: d.records || {},
-      focus: d.focus || {},
-      lastExportAt: d.lastExportAt || null
-    };
+    return toV3(JSON.parse(raw));
   } catch (e) {
     console.warn("读取数据失败", e);
     return blank();
   }
+}
+
+function curStu() {
+  let s = DB.students.find(x => x.id === DB.curId);
+  if (!s) { s = DB.students[0]; DB.curId = s.id; }
+  return s;
+}
+function bucket() {
+  const id = curStu().id;
+  if (!DB.records[id] || typeof DB.records[id] !== "object") DB.records[id] = {};
+  return DB.records[id];
+}
+function focusBucket() {
+  const id = curStu().id;
+  if (!DB.focus[id] || typeof DB.focus[id] !== "object") DB.focus[id] = {};
+  return DB.focus[id];
 }
 
 function save() {
@@ -332,12 +400,12 @@ function mmdd(s) { return s.slice(5).replace("-", "/"); }
 /* =========================================================
    记录读写
    ========================================================= */
-function rec(date) { return DB.records[date] || {}; }
+function rec(date) { return bucket()[date] || {}; }
 
 const KINDS = { dict: "家听", cls: "堂听" };
 
 function setDict(date, kind, total, wrong) {
-  const r = DB.records[date] || (DB.records[date] = {});
+  const r = bucket()[date] || (bucket()[date] = {});
   const t = Math.max(1, Math.min(99, Math.round(Number(total)) || 1));
   const w = Math.max(0, Math.min(t, Math.round(Number(wrong)) || 0));
   r[kind] = { total: t, wrong: w };
@@ -345,17 +413,18 @@ function setDict(date, kind, total, wrong) {
   return r[kind];
 }
 function setLevel(date, level) {
-  const r = DB.records[date] || (DB.records[date] = {});
+  const r = bucket()[date] || (bucket()[date] = {});
   r.hw = Object.assign({ note: "" }, r.hw || {}, { level: level });
   save();
 }
 function setNote(date, note) {
+  const b = bucket();
   if (!note) {
-    if (DB.records[date] && DB.records[date].hw) DB.records[date].hw.note = "";
+    if (b[date] && b[date].hw) b[date].hw.note = "";
     save();
     return;
   }
-  const r = DB.records[date] || (DB.records[date] = {});
+  const r = b[date] || (b[date] = {});
   r.hw = Object.assign({ level: "" }, r.hw || {}, { note: note });
   save();
 }
@@ -392,7 +461,7 @@ function renderToday() {
     const tEl = document.getElementById(cfg.totalId);
     const wEl = document.getElementById(cfg.wrongId);
     const cur = r[cfg.kind];
-    const fallbackTotal = cfg.kind === "dict" ? (DB.student.dictTotal || 8) : (DB.student.clsTotal || 8);
+    const fallbackTotal = cfg.kind === "dict" ? (curStu().dictTotal || 8) : (curStu().clsTotal || 8);
     if (document.activeElement !== tEl) tEl.value = cur ? cur.total : fallbackTotal;
     if (document.activeElement !== wEl) wEl.value = cur ? cur.wrong : 0;
 
@@ -424,6 +493,23 @@ document.getElementById("noteInput").addEventListener("change", e => {
   setNote(curDate, e.target.value.trim());
 });
 
+// 家听/堂听 共/错 输入框 → setDict
+function bindDictInput(inputId, kind) {
+  document.getElementById(inputId).addEventListener("change", () => {
+    const totalId = kind === "dict" ? "dictTotal" : "clsTotal";
+    const wrongId = kind === "dict" ? "dictWrong" : "clsWrong";
+    setDict(curDate, kind,
+      document.getElementById(totalId).value,
+      document.getElementById(wrongId).value);
+    renderToday();
+    renderTrend();
+  });
+}
+bindDictInput("dictTotal", "dict");
+bindDictInput("dictWrong", "dict");
+bindDictInput("clsTotal", "cls");
+bindDictInput("clsWrong", "cls");
+
 /* =========================================================
    趋势
    ========================================================= */
@@ -431,8 +517,9 @@ let trendRange = 30;
 
 function collectDict() {
   const dict = [], cls = [];
-  Object.keys(DB.records).sort().forEach(d => {
-    const r = DB.records[d];
+  const bkt = bucket();
+  Object.keys(bkt).sort().forEach(d => {
+    const r = bkt[d];
     const a = accOf(r, "dict");
     if (a !== null) dict.push({ date: d, v: a, meta: r });
     const c = accOf(r, "cls");
@@ -443,8 +530,9 @@ function collectDict() {
 
 function collectLevelWeekly() {
   const byWeek = {};
-  Object.keys(DB.records).forEach(d => {
-    const v = lvlOf(DB.records[d]);
+  const bkt = bucket();
+  Object.keys(bkt).forEach(d => {
+    const v = lvlOf(bkt[d]);
     if (v === null) return;
     const w = weekStart(d);
     (byWeek[w] = byWeek[w] || []).push(v);
@@ -685,14 +773,14 @@ function renderWeek() {
     bits.length ? ("与上周比：" + bits.join("，")) : "上周没有可对比的数据。";
 
   const chips = document.getElementById("focusChips");
-  const saved = DB.focus[st.start];
+  const saved = focusBucket()[st.start];
   chips.innerHTML = "";
   focusCandidates(st, prev).forEach(t => {
     const b = document.createElement("button");
     b.textContent = t;
     if (saved === t) b.className = "on";
     b.onclick = () => {
-      DB.focus[st.start] = t;
+      focusBucket()[st.start] = t;
       save();
       document.getElementById("focusInput").value = t;
       renderWeek();
@@ -701,7 +789,7 @@ function renderWeek() {
   });
   document.getElementById("focusInput").value = saved || "";
   document.getElementById("focusInput").onchange = e => {
-    DB.focus[st.start] = e.target.value.trim();
+    focusBucket()[st.start] = e.target.value.trim();
     save();
     renderWeek();
   };
@@ -730,8 +818,9 @@ function buildReport() {
   c.fillStyle = "#2f6fed"; c.fillRect(0, 0, W, 12);
 
   const F = (size, weight) => (weight || "400") + " " + size + "px -apple-system,'PingFang SC','Microsoft YaHei',sans-serif";
-  const name = DB.student.name || "学生";
-  const grade = DB.student.grade ? " · " + DB.student.grade : "";
+  const stu = curStu();
+  const name = stu.name || "学生";
+  const grade = stu.grade ? " · " + stu.grade : "";
 
   c.fillStyle = "#1b1f24"; c.font = F(48, "700");
   c.fillText("一周学情记录", 64, 110);
@@ -768,7 +857,7 @@ function buildReport() {
     const r = rec(d);
     const x = 64 + bgap + i * (bw + bgap);
     const wrong = r.dict ? r.dict.wrong : null;
-    const total = r.dict ? (r.dict.total || DB.student.dictTotal || 8) : null;
+    const total = r.dict ? (r.dict.total || stu.dictTotal || 8) : null;
     const hMax = baseY - topY;
     const h = wrong === null ? 0 : Math.max(8, hMax * Math.min(1, wrong / wmax));
     c.fillStyle = wrong === null ? "#f0f2f5" : (wrong <= 1 ? "#12a150" : wrong <= 3 ? "#d97706" : "#d6403a");
@@ -813,7 +902,7 @@ function buildReport() {
   c.fillText(bits.length ? "与上周比：" + bits.join("，") : "与上周比：暂无可比数据", 64, 1042);
 
   // 一句话
-  const focus = DB.focus[st.start] || "本周先把记录补齐，每天 30 秒。";
+  const focus = focusBucket()[st.start] || "本周先把记录补齐，每天 30 秒。";
   c.fillStyle = "#f2f7ff";
   roundRect(c, 64, 1082, W - 128, 170, 20); c.fill();
   c.fillStyle = "#1b5fd0"; c.font = F(26, "600");
@@ -868,13 +957,15 @@ document.getElementById("genBtn").onclick = () => {
    设置
    ========================================================= */
 function renderSettings() {
-  document.getElementById("nameInput").value = DB.student.name || "";
-  document.getElementById("gradeInput").value = DB.student.grade || "";
-  document.getElementById("totalInput").value = DB.student.dictTotal || 8;
-  document.getElementById("clsInput").value = DB.student.clsTotal || 8;
+  const s = curStu();
+  document.getElementById("nameInput").value = s.name || "";
+  document.getElementById("gradeInput").value = s.grade || "";
+  document.getElementById("totalInput").value = s.dictTotal || 8;
+  document.getElementById("clsInput").value = s.clsTotal || 8;
 
-  const n = Object.keys(DB.records).length;
-  document.getElementById("dataInfo").textContent = "共 " + n + " 天记录。";
+  const days = Object.keys(bucket()).filter(k => Object.keys(bucket()[k]).length).length;
+  document.getElementById("dataInfo").textContent =
+    "当前学生 " + days + " 天记录 · 共 " + DB.students.length + " 个学生。";
 
   const last = DB.lastExportAt;
   if (!last) {
@@ -888,23 +979,47 @@ function renderSettings() {
 }
 
 document.getElementById("nameInput").addEventListener("change", e => {
-  DB.student.name = e.target.value.trim(); save(); renderTop();
+  curStu().name = e.target.value.trim(); save(); renderTop();
 });
 document.getElementById("gradeInput").addEventListener("change", e => {
-  DB.student.grade = e.target.value.trim(); save(); renderTop();
+  curStu().grade = e.target.value.trim(); save(); renderTop();
 });
 document.getElementById("totalInput").addEventListener("change", e => {
   let v = parseInt(e.target.value, 10);
   if (!v || v < 1) v = 8;
   if (v > 30) v = 30;
-  DB.student.dictTotal = v; save(); renderToday();
+  curStu().dictTotal = v; save(); renderToday();
 });
 document.getElementById("clsInput").addEventListener("change", e => {
   let v = parseInt(e.target.value, 10);
   if (!v || v < 1) v = 8;
   if (v > 30) v = 30;
-  DB.student.clsTotal = v; save(); renderToday();
+  curStu().clsTotal = v; save(); renderToday();
 });
+
+document.getElementById("addStuBtn").onclick = () => {
+  const s = newStudentObj("");
+  DB.students.push(s);
+  DB.curId = s.id;
+  save();
+  renderAll();
+  document.getElementById("nameInput").focus();
+  toast("已添加，填写 TA 的信息");
+};
+
+document.getElementById("delStuBtn").onclick = () => {
+  if (DB.students.length <= 1) { toast("至少保留一个学生"); return; }
+  const s = curStu();
+  const label = s.name || "未命名学生";
+  if (!confirm("删除「" + label + "」和 TA 的全部记录？此操作无法恢复。")) return;
+  delete DB.records[s.id];
+  delete DB.focus[s.id];
+  DB.students = DB.students.filter(x => x.id !== s.id);
+  DB.curId = DB.students[0].id;
+  save();
+  renderAll();
+  toast("已删除");
+};
 
 document.getElementById("exportBtn").onclick = () => {
   DB.lastExportAt = todayISO();
@@ -926,15 +1041,9 @@ document.getElementById("fileInput").addEventListener("change", e => {
   fr.onload = () => {
     try {
       const d = JSON.parse(fr.result);
-      if (!d || typeof d !== "object" || !d.records) throw new Error("格式不对");
-      if (!confirm("导入会覆盖当前全部记录，确定吗？")) return;
-      DB = {
-        version: 2,
-        student: Object.assign(blank().student, d.student || {}),
-        records: d.records || {},
-        focus: d.focus || {},
-        lastExportAt: d.lastExportAt || null
-      };
+      if (!d || typeof d !== "object" || (!d.records && !d.students)) throw new Error("格式不对");
+      if (!confirm("导入会覆盖当前全部数据（所有学生），确定吗？")) return;
+      DB = toV3(d);
       save();
       renderAll();
       toast("已导入");
@@ -947,9 +1056,11 @@ document.getElementById("fileInput").addEventListener("change", e => {
 });
 
 document.getElementById("clearBtn").onclick = () => {
-  if (!confirm("会删掉全部记录，且无法恢复。确定吗？")) return;
+  if (!confirm("会删掉所有学生的全部记录（保留学生名单和设置），且无法恢复。确定吗？")) return;
   if (!confirm("再确认一次：真的清空？")) return;
-  DB = blank();
+  DB.records = {};
+  DB.focus = {};
+  DB.students.forEach(s => { DB.records[s.id] = {}; DB.focus[s.id] = {}; });
   save();
   renderAll();
 };
@@ -958,10 +1069,29 @@ document.getElementById("clearBtn").onclick = () => {
    导航与启动
    ========================================================= */
 function renderTop() {
-  const s = DB.student;
-  document.getElementById("topSub").textContent =
-    (s.name || "未设置姓名") + (s.grade ? " · " + s.grade : "");
+  const s = curStu();
+  const sel = document.getElementById("stuSelect");
+  sel.innerHTML = "";
+  DB.students.forEach(st => {
+    const o = document.createElement("option");
+    o.value = st.id;
+    o.textContent = st.name || "未命名";
+    if (st.id === DB.curId) o.selected = true;
+    sel.appendChild(o);
+  });
+  document.getElementById("topSub").textContent = s.grade || "";
 }
+
+function switchStudent(id) {
+  if (!DB.students.some(x => x.id === id) || id === DB.curId) return;
+  DB.curId = id;
+  save();
+  renderAll();
+}
+
+document.getElementById("stuSelect").addEventListener("change", e => {
+  switchStudent(e.target.value);
+});
 
 function switchView(v) {
   ["today", "trend", "week", "set"].forEach(k => {
