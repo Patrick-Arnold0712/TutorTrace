@@ -1,520 +1,996 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TutorTrace</title>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #64748b;
-            --background: #f8fafc;
-            --surface: #ffffff;
-            --text: #1e293b;
-            --text-light: #64748b;
-            --border: #e2e8f0;
-            --success: #22c55e;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--background);
-            color: var(--text);
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-        h1 {
-            font-size: 2.5rem;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-        }
-        .subtitle {
-            color: var(--text-light);
-            font-size: 1.1rem;
-        }
-        .card {
-            background: var(--surface);
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow);
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--text);
-        }
-        input, select, textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-        textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-        button {
-            background: var(--primary);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        button:hover {
-            background: var(--primary-dark);
-        }
-        .btn-secondary {
-            background: var(--secondary);
-        }
-        .btn-secondary:hover {
-            background: #475569;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-        .stat-card {
-            background: var(--surface);
-            padding: 1.5rem;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: var(--shadow);
-        }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-        .stat-label {
-            color: var(--text-light);
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-        }
-        .session-list {
-            list-style: none;
-        }
-        .session-item {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .session-item:last-child {
-            border-bottom: none;
-        }
-        .session-info h3 {
-            font-size: 1.1rem;
-            margin-bottom: 0.25rem;
-        }
-        .session-info p {
-            color: var(--text-light);
-            font-size: 0.9rem;
-        }
-        .badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        .badge-active {
-            background: rgba(34, 197, 94, 0.1);
-            color: var(--success);
-        }
-        .badge-completed {
-            background: rgba(37, 99, 235, 0.1);
-            color: var(--primary);
-        }
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-light);
-        }
-        .actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .action-btn {
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-        }
-        .btn-start {
-            background: var(--success);
-        }
-        .btn-start:hover {
-            background: #16a34a;
-        }
-        .btn-end {
-            background: var(--warning);
-        }
-        .btn-end:hover {
-            background: #d97706;
-        }
-        .btn-delete {
-            background: var(--danger);
-        }
-        .btn-delete:hover {
-            background: #dc2626;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal.active {
-            display: flex;
-        }
-        .modal-content {
-            background: var(--surface);
-            padding: 2rem;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-        .modal-close {
-            background: none;
-            padding: 0.5rem;
-            font-size: 1.5rem;
-        }
-        .export-section {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid var(--border);
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f6fed">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TutorTrace">
+<title>TutorTrace · 学情记录</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --line:#e6e8eb; --text:#1b1f24; --muted:#6b7280;
+    --brand:#2f6fed; --ok:#12a150; --warn:#d97706; --bad:#d6403a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    font-size:15px;line-height:1.5}
+  .top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);
+    padding:10px 14px;display:flex;align-items:baseline;gap:8px}
+  .top b{font-size:16px}
+  .top span{color:var(--muted);font-size:12px}
+  main{padding:12px 12px 84px;max-width:640px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h3{margin:0 0 10px;font-size:14px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .spread{justify-content:space-between}
+  .muted{color:var(--muted);font-size:12.5px}
+  .big{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+  input[type=date],input[type=text],input[type=number]{
+    font:inherit;color:inherit;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
+  .dict{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;margin-top:6px}
+  .dict button{padding:12px 0;border:1px solid var(--line);background:#fff;border-radius:10px;
+    font-size:16px;font-weight:600;color:var(--text)}
+  .dict button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+  .levels button{padding:14px 0;border:1px solid var(--line);background:#fff;border-radius:10px;
+    font-size:18px;font-weight:700;color:var(--text)}
+  .levels button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chips button{padding:7px 12px;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:13px;color:var(--muted)}
+  .chips button.on{background:#eef4ff;border-color:#c7dbfe;color:var(--brand);font-weight:600}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);
+    background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  .tabbar button{background:none;border:0;padding:9px 0 11px;font:inherit;font-size:12px;color:var(--muted)}
+  .tabbar button.on{color:var(--brand);font-weight:700}
+  .tabbar button i{display:block;font-style:normal;font-size:17px;line-height:1.2}
+  canvas{display:block;width:100%;height:180px}
+  .hint{color:var(--muted);font-size:12px;margin-top:8px}
+  .save{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:7;background:#1b1f24;color:#fff;
+    padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none}
+  .save.on{opacity:.92}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:center}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  td.name{color:var(--muted)}
+  .delta.up{color:var(--ok)} .delta.down{color:var(--bad)} .delta.flat{color:var(--muted)}
+  .preview{display:none;margin-top:12px}
+  .preview img{width:100%;border:1px solid var(--line);border-radius:10px}
+  .btn{display:inline-block;padding:11px 16px;border-radius:12px;border:1px solid var(--line);background:#fff;
+    font:inherit;font-weight:600;color:var(--text)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn:active{opacity:.85}
+  .warnbox{background:#fff8e6;border:1px solid #f3e0b5;color:#7a5b00;border-radius:12px;padding:10px 12px;font-size:13px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .two label{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--muted)}
+  .two input{width:100%;min-width:0}
+  .legend{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .four{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px}
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>TutorTrace</h1>
-            <p class="subtitle">学习辅导跟踪系统</p>
-        </header>
-
-        <div class="card">
-            <h2>新建辅导记录</h2>
-            <form id="sessionForm">
-                <div class="form-group">
-                    <label for="studentName">学生姓名</label>
-                    <input type="text" id="studentName" required placeholder="输入学生姓名">
-                </div>
-                <div class="form-group">
-                    <label for="subject">科目</label>
-                    <select id="subject" required>
-                        <option value="">选择科目</option>
-                        <option value="math">数学</option>
-                        <option value="english">英语</option>
-                        <option value="physics">物理</option>
-                        <option value="chemistry">化学</option>
-                        <option value="biology">生物</option>
-                        <option value="history">历史</option>
-                        <option value="geography">地理</option>
-                        <option value="programming">编程</option>
-                        <option value="other">其他</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="date">日期</label>
-                    <input type="date" id="date" required>
-                </div>
-                <div class="form-group">
-                    <label for="duration">时长（分钟）</label>
-                    <input type="number" id="duration" min="15" max="300" required placeholder="30">
-                </div>
-                <div class="form-group">
-                    <label for="notes">备注</label>
-                    <textarea id="notes" placeholder="记录本次辅导的要点..."></textarea>
-                </div>
-                <button type="submit">保存记录</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2>辅导记录</h2>
-                <button class="btn-secondary" onclick="exportData()">导出数据</button>
-            </div>
-            <div id="statsGrid" class="stats-grid"></div>
-            <div id="sessionList" class="session-list"></div>
-            <div id="emptyState" class="empty-state">
-                <p>暂无辅导记录，添加第一条记录开始吧！</p>
-            </div>
-        </div>
+<div class="top"><b>TutorTrace</b><span id="topSub"></span></div>
+<main>
+  <!-- ============ 今天 ============ -->
+  <section id="v-today">
+    <div class="card">
+      <h3>日期</h3>
+      <input type="date" id="dateInput">
+      <div class="hint" id="dateHint"></div>
     </div>
 
-    <div id="endSessionModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>结束辅导</h3>
-                <button class="modal-close" onclick="closeEndSessionModal()">&times;</button>
-            </div>
-            <div class="form-group">
-                <label for="endNotes">结束备注</label>
-                <textarea id="endNotes" placeholder="记录本次辅导的总结..."></textarea>
-            </div>
-            <button onclick="confirmEndSession()">确认结束</button>
-        </div>
+    <div class="card">
+      <h3>家听</h3>
+      <div class="two">
+        <label>共 <input type="number" id="dictTotal" min="1" max="99" inputmode="numeric"></label>
+        <label>错 <input type="number" id="dictWrong" min="0" max="99" inputmode="numeric"></label>
+      </div>
+      <div class="row spread" style="margin-top:12px">
+        <div class="big" id="accBig">—</div>
+        <div class="muted" id="accSub">还没有记录</div>
+      </div>
+      <div class="hint">正确率 =（共 − 错）÷ 共</div>
     </div>
 
-    <script>
-        // 应用状态
-        let state = {
-            sessions: [],
-            currentSession: null
-        };
+    <div class="card">
+      <h3>堂听</h3>
+      <div class="two">
+        <label>共 <input type="number" id="clsTotal" min="1" max="99" inputmode="numeric"></label>
+        <label>错 <input type="number" id="clsWrong" min="0" max="99" inputmode="numeric"></label>
+      </div>
+      <div class="row spread" style="margin-top:12px">
+        <div class="big" id="clsBig">—</div>
+        <div class="muted" id="clsSub">还没有记录</div>
+      </div>
+      <div class="hint">正确率 =（共 − 错）÷ 共</div>
+    </div>
 
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            loadFromStorage();
-            setupEventListeners();
-            render();
-            // 设置默认日期为今天
-            document.getElementById('date').valueAsDate = new Date();
-        });
+    <div class="card">
+      <h3>作业等级</h3>
+      <div class="levels" id="levelGrid"></div>
+      <div style="margin-top:10px">
+        <input type="text" id="noteInput" placeholder="一句话备注（可空）：比如 阅读题漏了原文">
+      </div>
+    </div>
+  </section>
 
-        // 从localStorage加载数据
-        function loadFromStorage() {
-            const saved = localStorage.getItem('tutorTraceData');
-            if (saved) {
-                try {
-                    const data = JSON.parse(saved);
-                    state.sessions = data.sessions || [];
-                    state.currentSession = data.currentSession || null;
-                } catch (e) {
-                    console.error('Failed to load data:', e);
-                }
-            }
-        }
+  <!-- ============ 趋势 ============ -->
+  <section id="v-trend" hidden>
+    <div class="card">
+      <div class="row spread">
+        <h3 style="margin:0">家听正确率</h3>
+        <div class="chips" id="rangeChips">
+          <button data-r="7">近 7 天</button>
+          <button data-r="30" class="on">近 30 天</button>
+          <button data-r="0">全部</button>
+        </div>
+      </div>
+      <canvas id="cvDict"></canvas>
+      <div class="legend"><span><i style="background:#2f6fed"></i>家听</span><span><i style="background:#f08c00"></i>堂听</span></div>
+      <div class="hint" id="hintDict">点一下图上的点，看当天备注。</div>
+    </div>
 
-        // 保存到localStorage
-        function saveToStorage() {
-            const data = {
-                sessions: state.sessions,
-                currentSession: state.currentSession
-            };
-            localStorage.setItem('tutorTraceData', JSON.stringify(data));
-        }
+    <div class="card">
+      <h3>作业等级（按周平均）</h3>
+      <canvas id="cvLevel"></canvas>
+      <div class="hint" id="hintLevel">A=4　B=3　C=2　D=1</div>
+    </div>
+  </section>
 
-        // 设置事件监听器
-        function setupEventListeners() {
-            document.getElementById('sessionForm').addEventListener('submit', handleFormSubmit);
-        }
+  <!-- ============ 周报 ============ -->
+  <section id="v-week" hidden>
+    <div class="card">
+      <div class="row spread">
+        <button class="btn" id="prevWeek">‹ 上周</button>
+        <div style="text-align:center">
+          <div style="font-weight:700" id="weekTitle">—</div>
+          <div class="muted" id="weekSub">—</div>
+        </div>
+        <button class="btn" id="nextWeek">下周 ›</button>
+      </div>
+    </div>
 
-        // 处理表单提交
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            
-            const formData = {
-                id: Date.now().toString(),
-                studentName: document.getElementById('studentName').value.trim(),
-                subject: document.getElementById('subject').value,
-                date: document.getElementById('date').value,
-                duration: parseInt(document.getElementById('duration').value),
-                notes: document.getElementById('notes').value.trim(),
-                createdAt: new Date().toISOString()
-            };
-            
-            state.sessions.unshift(formData);
-            saveToStorage();
-            render();
-            document.getElementById('sessionForm').reset();
-            document.getElementById('date').valueAsDate = new Date();
-        }
+    <div class="card">
+      <h3>本周记录</h3>
+      <table id="weekTable"></table>
+    </div>
 
-        // 开始辅导会话
-        function startSession(id) {
-            const session = state.sessions.find(s => s.id === id);
-            if (session && !session.endTime) {
-                state.currentSession = id;
-                session.startTime = new Date().toISOString();
-                saveToStorage();
-                render();
-            }
-        }
+    <div class="card">
+      <h3>与上周比</h3>
+      <div class="four">
+        <div><div class="muted">家听正确率</div><div class="big" id="wkAcc">—</div></div>
+        <div><div class="muted">堂听正确率</div><div class="big" id="wkCls">—</div></div>
+        <div><div class="muted">作业等级</div><div class="big" id="wkLvl">—</div></div>
+        <div><div class="muted">记录天数</div><div class="big" id="wkDays">—</div></div>
+      </div>
+      <div class="hint" id="wkCompare"></div>
+    </div>
 
-        // 显示结束会话对话框
-        function showEndSessionModal(id) {
-            state.tempEndId = id;
-            document.getElementById('endSessionModal').classList.add('active');
-        }
+    <div class="card">
+      <h3>本周最需要练的</h3>
+      <div class="chips" id="focusChips"></div>
+      <div style="margin-top:10px"><input type="text" id="focusInput" placeholder="也可以自己写一句"></div>
+      <div class="hint">这句话会印在简报图上。</div>
+    </div>
 
-        // 关闭结束会话对话框
-        function closeEndSessionModal() {
-            document.getElementById('endSessionModal').classList.remove('active');
-            state.tempEndId = null;
-        }
+    <div class="card">
+      <button class="btn primary" id="genBtn" style="width:100%">生成本周简报图</button>
+      <div class="preview" id="preview">
+        <img id="previewImg" alt="本周简报">
+        <div class="row" style="margin-top:10px">
+          <a class="btn" id="dlBtn" download="周报.png">下载图片</a>
+          <span class="muted">手机上也可以长按图片，选“保存图片”。</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        // 确认结束会话
-        function confirmEndSession() {
-            const endNotes = document.getElementById('endNotes').value.trim();
-            const session = state.sessions.find(s => s.id === state.tempEndId);
-            
-            if (session) {
-                session.endTime = new Date().toISOString();
-                session.endNotes = endNotes;
-                session.status = 'completed';
-                state.currentSession = null;
-                saveToStorage();
-                render();
-                closeEndSessionModal();
-                document.getElementById('endNotes').value = '';
-            }
-        }
+  <!-- ============ 设置 ============ -->
+  <section id="v-set" hidden>
+    <div class="card">
+      <h3>学生</h3>
+      <input type="text" id="nameInput" placeholder="姓名">
+      <div style="height:8px"></div>
+      <input type="text" id="gradeInput" placeholder="年级，比如 六年级">
+      <div style="height:8px"></div>
+      <div class="row spread">
+        <span>家听默认共几个</span>
+        <input type="number" id="totalInput" min="1" max="99" style="width:90px;text-align:center">
+      </div>
+      <div style="height:8px"></div>
+      <div class="row spread">
+        <span>堂听默认共几个</span>
+        <input type="number" id="clsInput" min="1" max="99" style="width:90px;text-align:center">
+      </div>
+      <div class="hint">只影响新建那天的默认值，已经记过的不会改。</div>
+    </div>
 
-        // 删除会话
-        function deleteSession(id) {
-            if (confirm('确定要删除这条记录吗？')) {
-                state.sessions = state.sessions.filter(s => s.id !== id);
-                if (state.currentSession === id) {
-                    state.currentSession = null;
-                }
-                saveToStorage();
-                render();
-            }
-        }
+    <div class="card">
+      <h3>数据</h3>
+      <div class="row">
+        <button class="btn" id="exportBtn">导出备份</button>
+        <button class="btn" id="importBtn">导入备份</button>
+        <input type="file" id="fileInput" accept=".json,application/json" hidden>
+      </div>
+      <div class="hint" id="dataInfo"></div>
+      <div class="hint" id="exportHint"></div>
+    </div>
 
-        // 导出数据
-        function exportData() {
-            const dataStr = JSON.stringify(state.sessions, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `tutortrace-export-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
+    <div class="card">
+      <h3>说明</h3>
+      <div class="muted" style="line-height:1.7">
+        TutorTrace 的数据只存在这台设备的浏览器里，不上传、不联网。<br>
+        换设备、换浏览器、清理缓存都会丢，所以每周导出一次备份，把 JSON 文件存到自己微信里最稳。<br>
+        手机浏览器菜单里选"添加到主屏幕"，用起来就和 App 一样。
+      </div>
+    </div>
 
-        // 渲染界面
-        function render() {
-            renderStats();
-            renderSessionList();
-        }
+    <div class="card">
+      <button class="btn" id="clearBtn" style="color:var(--bad)">清空全部记录</button>
+    </div>
+  </section>
+</main>
 
-        // 渲染统计信息
-        function renderStats() {
-            const statsGrid = document.getElementById('statsGrid');
-            const totalSessions = state.sessions.length;
-            const completedSessions = state.sessions.filter(s => s.status === 'completed').length;
-            const totalHours = state.sessions.reduce((sum, s) => {
-                if (s.startTime && s.endTime) {
-                    const start = new Date(s.startTime);
-                    const end = new Date(s.endTime);
-                    return sum + (end - start) / (1000 * 60 * 60);
-                }
-                return sum;
-            }, 0);
-            
-            statsGrid.innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-value">${totalSessions}</div>
-                    <div class="stat-label">总辅导次数</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${completedSessions}</div>
-                    <div class="stat-label">已完成</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${totalHours.toFixed(1)}h</div>
-                    <div class="stat-label">总时长</div>
-                </div>
-            `;
-        }
+<nav class="tabbar">
+  <button data-v="today" class="on"><i>✎</i>今天</button>
+  <button data-v="trend"><i>〜</i>趋势</button>
+  <button data-v="week"><i>▤</i>周报</button>
+  <button data-v="set"><i>⚙</i>设置</button>
+</nav>
+<div class="save" id="toast">已保存</div>
 
-        // 渲染会话列表
-        function renderSessionList() {
-            const sessionList = document.getElementById('sessionList');
-            const emptyState = document.getElementById('emptyState');
-            
-            if (state.sessions.length === 0) {
-                sessionList.innerHTML = '';
-                emptyState.style.display = 'block';
-                return;
-            }
-            
-            emptyState.style.display = 'none';
-            sessionList.innerHTML = state.sessions.map(session => {
-                const start = session.startTime ? new Date(session.startTime) : null;
-                const end = session.endTime ? new Date(session.endTime) : null;
-                const duration = start && end ? Math.round((end - start) / 60000) : null;
-                
-                return `
-                    <div class="session-item">
-                        <div class="session-info">
-                            <h3>${session.studentName} - ${session.subject}</h3>
-                            <p>${session.date} ${duration ? `• ${duration}分钟` : ''}</p>
-                        </div>
-                        <div class="actions">
-                            ${!session.startTime ? 
-                                `<button class="action-btn btn-start" onclick="startSession('${session.id}')">开始</button>` : 
-                                `<button class="action-btn btn-end" onclick="showEndSessionModal('${session.id}')">结束</button>`
-                            }
-                            <button class="action-btn btn-delete" onclick="deleteSession('${session.id}')">删除</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
+<script>
+"use strict";
+/* =========================================================
+   数据
+   ========================================================= */
+const KEY = "xueqing.v1";
+const LEVELS = ["A", "B", "C", "D"];
+const LVNUM = { A: 4, B: 3, C: 2, D: 1 };
 
-        // 格式化日期
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-            });
-        }
-    </script>
+function blank() {
+  return {
+    version: 2,
+    student: { name: "", grade: "", dictTotal: 8, clsTotal: 8 },
+    records: {},
+    focus: {},          // "2026-10-20" -> 本周最需要练的一句
+    lastExportAt: null
+  };
+}
+
+let DB = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return blank();
+    const d = JSON.parse(raw);
+    const b = blank();
+    return {
+      version: 2,
+      student: Object.assign(b.student, d.student || {}),
+      records: d.records || {},
+      focus: d.focus || {},
+      lastExportAt: d.lastExportAt || null
+    };
+  } catch (e) {
+    console.warn("读取数据失败", e);
+    return blank();
+  }
+}
+
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(DB));
+    toast("已保存");
+  } catch (e) {
+    toast("保存失败：存储空间可能满了");
+  }
+}
+
+let toastTimer = null;
+function toast(text) {
+  const el = document.getElementById("toast");
+  el.textContent = text;
+  el.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("on"), 1200);
+}
+
+/* =========================================================
+   日期工具
+   ========================================================= */
+function iso(d) {
+  const p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function parseISO(s) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function todayISO() { return iso(new Date()); }
+function addDays(s, n) {
+  const d = parseISO(s);
+  d.setDate(d.getDate() + n);
+  return iso(d);
+}
+function weekStart(s) {
+  const d = parseISO(s);
+  const wd = (d.getDay() + 6) % 7;      // 周一 = 0
+  d.setDate(d.getDate() - wd);
+  return iso(d);
+}
+function weekDays(start) {
+  const out = [];
+  for (let i = 0; i < 7; i++) out.push(addDays(start, i));
+  return out;
+}
+function mmdd(s) { return s.slice(5).replace("-", "/"); }
+
+/* =========================================================
+   记录读写
+   ========================================================= */
+function rec(date) { return DB.records[date] || {}; }
+
+const KINDS = { dict: "家听", cls: "堂听" };
+
+function setDict(date, kind, total, wrong) {
+  const r = DB.records[date] || (DB.records[date] = {});
+  const t = Math.max(1, Math.min(99, Math.round(Number(total)) || 1));
+  const w = Math.max(0, Math.min(t, Math.round(Number(wrong)) || 0));
+  r[kind] = { total: t, wrong: w };
+  save();
+  return r[kind];
+}
+function setLevel(date, level) {
+  const r = DB.records[date] || (DB.records[date] = {});
+  r.hw = Object.assign({ note: "" }, r.hw || {}, { level: level });
+  save();
+}
+function setNote(date, note) {
+  if (!note) {
+    if (DB.records[date] && DB.records[date].hw) DB.records[date].hw.note = "";
+    save();
+    return;
+  }
+  const r = DB.records[date] || (DB.records[date] = {});
+  r.hw = Object.assign({ level: "" }, r.hw || {}, { note: note });
+  save();
+}
+
+function accOf(r, kind) {
+  const k = kind || "dict";
+  if (!r || !r[k]) return null;
+  const t = r[k].total || 8;
+  return Math.max(0, Math.min(1, (t - r[k].wrong) / t));
+}
+function lvlOf(r) {
+  if (!r || !r.hw || !r.hw.level) return null;
+  return LVNUM[r.hw.level] || null;
+}
+
+/* =========================================================
+   今天
+   ========================================================= */
+let curDate = todayISO();
+
+function renderToday() {
+  const di = document.getElementById("dateInput");
+  di.value = curDate;
+
+  const dayName = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][parseISO(curDate).getDay()];
+  document.getElementById("dateHint").textContent =
+    dayName + (curDate === todayISO() ? " · 今天" : "");
+
+  const r = rec(curDate);
+  [
+    { kind: "dict", totalId: "dictTotal", wrongId: "dictWrong", bigId: "accBig", subId: "accSub" },
+    { kind: "cls", totalId: "clsTotal", wrongId: "clsWrong", bigId: "clsBig", subId: "clsSub" }
+  ].forEach(cfg => {
+    const tEl = document.getElementById(cfg.totalId);
+    const wEl = document.getElementById(cfg.wrongId);
+    const cur = r[cfg.kind];
+    const fallbackTotal = cfg.kind === "dict" ? (DB.student.dictTotal || 8) : (DB.student.clsTotal || 8);
+    if (document.activeElement !== tEl) tEl.value = cur ? cur.total : fallbackTotal;
+    if (document.activeElement !== wEl) wEl.value = cur ? cur.wrong : 0;
+
+    const acc = accOf(r, cfg.kind);
+    document.getElementById(cfg.bigId).textContent = acc === null ? "—" : Math.round(acc * 100) + "%";
+    document.getElementById(cfg.subId).textContent = cur
+      ? ("错 " + cur.wrong + " 个 / 共 " + cur.total + " 个")
+      : "还没有记录";
+  });
+
+  const lg = document.getElementById("levelGrid");
+  lg.innerHTML = "";
+  LEVELS.forEach(L => {
+    const b = document.createElement("button");
+    b.textContent = L;
+    if (r.hw && r.hw.level === L) b.className = "on";
+    b.onclick = () => { setLevel(curDate, L); renderToday(); renderTrend(); };
+    lg.appendChild(b);
+  });
+
+  document.getElementById("noteInput").value = (r.hw && r.hw.note) || "";
+}
+
+document.getElementById("dateInput").addEventListener("change", e => {
+  curDate = e.target.value || todayISO();
+  renderToday();
+});
+document.getElementById("noteInput").addEventListener("change", e => {
+  setNote(curDate, e.target.value.trim());
+});
+
+/* =========================================================
+   趋势
+   ========================================================= */
+let trendRange = 30;
+
+function collectDict() {
+  const dict = [], cls = [];
+  Object.keys(DB.records).sort().forEach(d => {
+    const r = DB.records[d];
+    const a = accOf(r, "dict");
+    if (a !== null) dict.push({ date: d, v: a, meta: r });
+    const c = accOf(r, "cls");
+    if (c !== null) cls.push({ date: d, v: c, meta: r });
+  });
+  return { dict, cls };
+}
+
+function collectLevelWeekly() {
+  const byWeek = {};
+  Object.keys(DB.records).forEach(d => {
+    const v = lvlOf(DB.records[d]);
+    if (v === null) return;
+    const w = weekStart(d);
+    (byWeek[w] = byWeek[w] || []).push(v);
+  });
+  return Object.keys(byWeek).sort().map(w => {
+    const arr = byWeek[w];
+    return { date: w, v: arr.reduce((a, b) => a + b, 0) / arr.length, n: arr.length };
+  });
+}
+
+function inRange(list) {
+  if (!trendRange) return list;
+  const from = addDays(todayISO(), -(trendRange - 1));
+  return list.filter(p => p.date >= from);
+}
+
+function renderTrend() {
+  const { dict: dictAll, cls: clsAll } = collectDict();
+  const dict = inRange(dictAll);
+  const cls = inRange(clsAll);
+  const lv = inRange(collectLevelWeekly());
+
+  drawLine(document.getElementById("cvDict"), [
+    { pts: dict, color: "#2f6fed", tip: p => mmdd(p.date) + " · 家听 " + Math.round(p.v * 100) + "%（错 " + p.meta.dict.wrong + " 个）" },
+    { pts: cls, color: "#f08c00", tip: p => mmdd(p.date) + " · 堂听 " + Math.round(p.v * 100) + "%（错 " + p.meta.cls.wrong + " 个）" }
+  ], {
+    min: 0, max: 1,
+    yfmt: v => Math.round(v * 100) + "%",
+    ticks: [0, 0.25, 0.5, 0.75, 1]
+  });
+
+  drawLine(document.getElementById("cvLevel"), [
+    { pts: lv, color: "#12a150", tip: p => "周 " + mmdd(p.date) + " · 平均 " + p.v.toFixed(1) }
+  ], {
+    min: 1, max: 4,
+    yfmt: v => ["", "D", "C", "B", "A"][Math.round(v)] || "",
+    ticks: [1, 2, 3, 4]
+  });
+
+  const lastDict = dict.length ? Math.round(dict[dict.length - 1].v * 100) + "%" : "—";
+  const lastCls = cls.length ? Math.round(cls[cls.length - 1].v * 100) + "%" : "—";
+  document.getElementById("hintDict").textContent = (dict.length || cls.length)
+    ? ("家听 " + dict.length + " 次（最近 " + lastDict + "）　堂听 " + cls.length + " 次（最近 " + lastCls + "）")
+    : "这段时间还没有听写记录。";
+  document.getElementById("hintLevel").textContent = lv.length
+    ? ("共 " + lv.length + " 周，最近一周平均 " + lv[lv.length - 1].v.toFixed(1))
+    : "这段时间还没有作业记录。";
+}
+
+function drawLine(cv, series, cfg) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = Math.max(1, Math.round(W * dpr));
+  cv.height = Math.max(1, Math.round(H * dpr));
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const L = 42, R = 12, T = 14, B = 26;
+  const iw = W - L - R, ih = H - T - B;
+
+  ctx.font = "11px -apple-system,'PingFang SC','Microsoft YaHei',sans-serif";
+  ctx.textBaseline = "middle";
+
+  cfg.ticks.forEach(t => {
+    const y = T + (cfg.max - t) / (cfg.max - cfg.min) * ih;
+    ctx.strokeStyle = "#eef0f3";
+    ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(W - R, y); ctx.stroke();
+    ctx.fillStyle = "#9aa1a9";
+    ctx.textAlign = "right";
+    ctx.fillText(cfg.yfmt(t), L - 6, y);
+  });
+
+  // 统一日期轴（所有系列的日期并集，保证不同系列的点按真实日期对齐）
+  const dateSet = new Set();
+  series.forEach(s => s.pts.forEach(p => dateSet.add(p.date)));
+  const dates = [...dateSet].sort();
+  const n = dates.length;
+
+  if (!n) {
+    ctx.fillStyle = "#9aa1a9"; ctx.textAlign = "center";
+    ctx.fillText("还没有数据", W / 2, T + ih / 2);
+    cv.__allPts = [];
+    return;
+  }
+
+  const dateIdx = new Map(dates.map((d, i) => [d, i]));
+  const X = i => n === 1 ? L + iw / 2 : L + iw * i / (n - 1);
+  const Y = v => T + (cfg.max - v) / (cfg.max - cfg.min) * ih;
+
+  const allPts = [];
+  series.forEach(s => {
+    if (!s.pts.length) return;
+    ctx.beginPath();
+    s.pts.forEach((p, i) => {
+      const x = X(dateIdx.get(p.date));
+      const y = Y(p.v);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.stroke();
+
+    if (s.pts.length > 1) {
+      ctx.lineTo(X(dateIdx.get(s.pts[s.pts.length - 1].date)), T + ih);
+      ctx.lineTo(X(dateIdx.get(s.pts[0].date)), T + ih);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0, T, 0, T + ih);
+      g.addColorStop(0, s.color + "26");
+      g.addColorStop(1, s.color + "00");
+      ctx.fillStyle = g; ctx.fill();
+    }
+
+    s.pts.forEach(p => {
+      const x = X(dateIdx.get(p.date));
+      ctx.beginPath();
+      ctx.arc(x, Y(p.v), 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff"; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = s.color; ctx.stroke();
+      allPts.push({ p, x, tip: s.tip });
+    });
+  });
+
+  ctx.fillStyle = "#9aa1a9"; ctx.textAlign = "center";
+  const idxs = n === 1 ? [0] : n === 2 ? [0, 1] : [0, Math.floor((n - 1) / 2), n - 1];
+  idxs.forEach(i => {
+    const label = mmdd(dates[i]);
+    const w = ctx.measureText(label).width;
+    let x = X(i);
+    if (x - w / 2 < L) x = L + w / 2;
+    if (x + w / 2 > W - R) x = W - R - w / 2;
+    ctx.fillText(label, x, H - 10);
+  });
+
+  cv.__allPts = allPts;
+  cv.onpointerdown = ev => {
+    const rect = cv.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    let best = null, bd = 1e9;
+    allPts.forEach(item => {
+      const d = Math.abs(item.x - x);
+      if (d < bd) { bd = d; best = item; }
+    });
+    if (best) toast(best.tip(best.p));
+  };
+}
+
+document.getElementById("rangeChips").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  trendRange = Number(b.dataset.r);
+  [...e.currentTarget.children].forEach(x => x.classList.toggle("on", x === b));
+  renderTrend();
+});
+
+/* =========================================================
+   周报
+   ========================================================= */
+let weekOffset = 0;
+
+function curWeekStart() {
+  return addDays(weekStart(todayISO()), weekOffset * 7);
+}
+
+function weekStats(start) {
+  const days = weekDays(start);
+  let accs = [], lvls = [], nDict = 0, nHw = 0;
+  days.forEach(d => {
+    const r = rec(d);
+    const a = accOf(r), l = lvlOf(r);
+    if (a !== null) { accs.push(a); nDict++; }
+    if (l !== null) { lvls.push(l); nHw++; }
+  });
+  return {
+    start: start,
+    days: days,
+    acc: accs.length ? accs.reduce((a, b) => a + b, 0) / accs.length : null,
+    lvl: lvls.length ? lvls.reduce((a, b) => a + b, 0) / lvls.length : null,
+    nDict: nDict,
+    nHw: nHw,
+    daysCount: days.filter(d => rec(d).dict || rec(d).hw).length
+  };
+}
+
+function focusCandidates(st, prev) {
+  const out = [];
+  if (st.acc !== null && (prev.acc === null || st.acc < prev.acc - 0.05)) {
+    out.push("家听：每天 8 个错词，盖—想—写—查各一轮");
+  }
+  if (st.lvl !== null && (prev.lvl === null || st.lvl < prev.lvl - 0.3)) {
+    out.push("作业：错题当天改完，第二天再讲一遍");
+  }
+  if (st.daysCount < 4) {
+    out.push("先把记录补齐：每天 30 秒，别再断");
+  }
+  out.push("审题：动笔前圈出动词和限制条件");
+  out.push("书写：易错字每天盖—想—写—查一轮");
+  out.push("保持：按现在的节奏再练一周");
+  return out.slice(0, 3);
+}
+
+function renderWeek() {
+  const st = weekStats(curWeekStart());
+  const prev = weekStats(addDays(st.start, -7));
+
+  document.getElementById("weekTitle").textContent =
+    mmdd(st.start) + " — " + mmdd(addDays(st.start, 6));
+  document.getElementById("weekSub").textContent =
+    weekOffset === 0 ? "本周" : (weekOffset < 0 ? Math.abs(weekOffset) + " 周前" : "未来周");
+
+  const tb = document.getElementById("weekTable");
+  let html = "<tr><th></th><th style='text-align:right'>家听</th><th style='text-align:right'>作业</th><th style='text-align:left'>备注</th></tr>";
+  const names = ["一", "二", "三", "四", "五", "六", "日"];
+  st.days.forEach((d, i) => {
+    const r = rec(d);
+    const a = accOf(r);
+    const dictCell = r.dict ? (Math.round(a * 100) + "%") : "—";
+    const hwCell = (r.hw && r.hw.level) || "—";
+    const note = (r.hw && r.hw.note) || "";
+    html += "<tr><td class='name'>" + names[i] + " " + mmdd(d) + "</td><td style='text-align:right'>" + dictCell +
+      "</td><td style='text-align:right'>" + hwCell + "</td><td class='name' style='text-align:left'>" + escapeHTML(note) + "</td></tr>";
+  });
+  tb.innerHTML = html;
+
+  document.getElementById("wkAcc").textContent = st.acc === null ? "—" : Math.round(st.acc * 100) + "%";
+  document.getElementById("wkLvl").textContent = st.lvl === null ? "—" : st.lvl.toFixed(1);
+  document.getElementById("wkDays").textContent = st.daysCount + " 天";
+
+  const bits = [];
+  if (st.acc !== null && prev.acc !== null) {
+    const d = Math.round((st.acc - prev.acc) * 100);
+    bits.push(d === 0 ? "正确率持平" : "正确率" + (d > 0 ? "升高 " : "下降 ") + Math.abs(d) + " 个百分点");
+  }
+  if (st.lvl !== null && prev.lvl !== null) {
+    const d = st.lvl - prev.lvl;
+    if (Math.abs(d) < 0.05) bits.push("等级持平");
+    else bits.push("等级" + (d > 0 ? "升高 " : "下降 ") + Math.abs(d).toFixed(1));
+  }
+  document.getElementById("wkCompare").textContent =
+    bits.length ? ("与上周比：" + bits.join("，")) : "上周没有可对比的数据。";
+
+  const chips = document.getElementById("focusChips");
+  const saved = DB.focus[st.start];
+  chips.innerHTML = "";
+  focusCandidates(st, prev).forEach(t => {
+    const b = document.createElement("button");
+    b.textContent = t;
+    if (saved === t) b.className = "on";
+    b.onclick = () => {
+      DB.focus[st.start] = t;
+      save();
+      document.getElementById("focusInput").value = t;
+      renderWeek();
+    };
+    chips.appendChild(b);
+  });
+  document.getElementById("focusInput").value = saved || "";
+  document.getElementById("focusInput").onchange = e => {
+    DB.focus[st.start] = e.target.value.trim();
+    save();
+    renderWeek();
+  };
+  document.getElementById("preview").style.display = "none";
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+document.getElementById("prevWeek").onclick = () => { weekOffset--; renderWeek(); };
+document.getElementById("nextWeek").onclick = () => { weekOffset++; renderWeek(); };
+
+/* =========================================================
+   简报图
+   ========================================================= */
+function buildReport() {
+  const st = weekStats(curWeekStart());
+  const prev = weekStats(addDays(st.start, -7));
+  const W = 1080, H = 1480;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const c = cv.getContext("2d");
+
+  c.fillStyle = "#ffffff"; c.fillRect(0, 0, W, H);
+  c.fillStyle = "#2f6fed"; c.fillRect(0, 0, W, 12);
+
+  const F = (size, weight) => (weight || "400") + " " + size + "px -apple-system,'PingFang SC','Microsoft YaHei',sans-serif";
+  const name = DB.student.name || "学生";
+  const grade = DB.student.grade ? " · " + DB.student.grade : "";
+
+  c.fillStyle = "#1b1f24"; c.font = F(48, "700");
+  c.fillText("一周学情记录", 64, 110);
+  c.fillStyle = "#6b7280"; c.font = F(30);
+  c.fillText(name + grade + "　" + mmdd(st.start) + " — " + mmdd(addDays(st.start, 6)), 64, 168);
+
+  // 三个数字卡
+  const cards = [
+    { k: "家听正确率", v: st.acc === null ? "—" : Math.round(st.acc * 100) + "%" },
+    { k: "作业等级", v: st.lvl === null ? "—" : st.lvl.toFixed(1) },
+    { k: "记录天数", v: st.daysCount + " 天" }
+  ];
+  const cw = 300, gap = 26;
+  cards.forEach((it, i) => {
+    const x = 64 + i * (cw + gap), y = 220;
+    c.fillStyle = "#f7f8fa";
+    roundRect(c, x, y, cw, 150, 20); c.fill();
+    c.fillStyle = "#6b7280"; c.font = F(26);
+    c.fillText(it.k, x + 28, y + 52);
+    c.fillStyle = "#1b1f24"; c.font = F(56, "700");
+    c.fillText(it.v, x + 28, y + 118);
+  });
+
+  // 家听柱状
+  c.fillStyle = "#1b1f24"; c.font = F(32, "600");
+  c.fillText("家听（每天的错词数）", 64, 410);
+
+  const baseY = 720, topY = 470, bw = 74, bgap = 42;
+  const wmax = Math.max(2, ...st.days.map(d => { const r = rec(d); return r.dict ? r.dict.wrong : 0; }));
+  c.strokeStyle = "#e6e8eb"; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(64, baseY); c.lineTo(W - 64, baseY); c.stroke();
+
+  st.days.forEach((d, i) => {
+    const r = rec(d);
+    const x = 64 + bgap + i * (bw + bgap);
+    const wrong = r.dict ? r.dict.wrong : null;
+    const total = r.dict ? (r.dict.total || DB.student.dictTotal || 8) : null;
+    const hMax = baseY - topY;
+    const h = wrong === null ? 0 : Math.max(8, hMax * Math.min(1, wrong / wmax));
+    c.fillStyle = wrong === null ? "#f0f2f5" : (wrong <= 1 ? "#12a150" : wrong <= 3 ? "#d97706" : "#d6403a");
+    roundRect(c, x, baseY - Math.max(h, wrong === null ? 6 : 8), bw, Math.max(h, 6), 10); c.fill();
+    c.fillStyle = "#1b1f24"; c.font = F(26, "600"); c.textAlign = "center";
+    c.fillText(wrong === null ? "—" : String(wrong), x + bw / 2, baseY - Math.max(h, 8) - 14);
+    c.fillStyle = "#9aa1a9"; c.font = F(24);
+    c.fillText(["一", "二", "三", "四", "五", "六", "日"][i], x + bw / 2, baseY + 34);
+    c.textAlign = "left";
+  });
+
+  // 作业等级
+  c.fillStyle = "#1b1f24"; c.font = F(32, "600");
+  c.fillText("作业等级", 64, 818);
+
+  const ly = 862, lgap = (W - 128 - 7 * 84) / 6;
+  st.days.forEach((d, i) => {
+    const r = rec(d);
+    const L = (r.hw && r.hw.level) || "";
+    const x = 64 + i * (84 + lgap);
+    c.fillStyle = L ? "#eef4ff" : "#f7f8fa";
+    roundRect(c, x, ly, 84, 84, 18); c.fill();
+    c.fillStyle = L ? "#2f6fed" : "#c3c8cf";
+    c.font = F(38, "700"); c.textAlign = "center";
+    c.fillText(L || "·", x + 42, ly + 55);
+    c.fillStyle = "#9aa1a9"; c.font = F(22);
+    c.fillText(["一", "二", "三", "四", "五", "六", "日"][i], x + 42, ly + 116);
+    c.textAlign = "left";
+  });
+
+  // 对比
+  const bits = [];
+  if (st.acc !== null && prev.acc !== null) {
+    const d = Math.round((st.acc - prev.acc) * 100);
+    if (d !== 0) bits.push("正确率" + (d > 0 ? "提高 " : "下降 ") + Math.abs(d) + " 个百分点");
+  }
+  if (st.lvl !== null && prev.lvl !== null) {
+    const d = st.lvl - prev.lvl;
+    if (Math.abs(d) >= 0.05) bits.push("作业等级" + (d > 0 ? "上升 " : "下降 ") + Math.abs(d).toFixed(1));
+  }
+  c.fillStyle = "#6b7280"; c.font = F(28);
+  c.fillText(bits.length ? "与上周比：" + bits.join("，") : "与上周比：暂无可比数据", 64, 1042);
+
+  // 一句话
+  const focus = DB.focus[st.start] || "本周先把记录补齐，每天 30 秒。";
+  c.fillStyle = "#f2f7ff";
+  roundRect(c, 64, 1082, W - 128, 170, 20); c.fill();
+  c.fillStyle = "#1b5fd0"; c.font = F(26, "600");
+  c.fillText("本周最需要练的", 96, 1132);
+  c.fillStyle = "#1b1f24"; c.font = F(32);
+  wrapText(c, focus, 96, 1184, W - 192, 44);
+
+  // 页脚
+  c.fillStyle = "#c3c8cf"; c.font = F(24);
+  c.fillText("生成于 " + todayISO() + " · TutorTrace", 64, H - 50);
+
+  return cv;
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function wrapText(c, text, x, y, maxW, lh) {
+  let line = "";
+  for (const ch of text) {
+    const t = line + ch;
+    if (c.measureText(t).width > maxW && line) {
+      c.fillText(line, x, y); y += lh; line = ch;
+    } else line = t;
+  }
+  if (line) c.fillText(line, x, y);
+}
+
+document.getElementById("genBtn").onclick = () => {
+  const cv = buildReport();
+  cv.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const img = document.getElementById("previewImg");
+    img.src = url;
+    document.getElementById("preview").style.display = "block";
+    const a = document.getElementById("dlBtn");
+    a.href = url;
+    const st = weekStats(curWeekStart());
+    a.download = "周报-" + st.start + ".png";
+    document.getElementById("preview").scrollIntoView({ behavior: "smooth", block: "center" });
+  }, "image/png");
+};
+
+/* =========================================================
+   设置
+   ========================================================= */
+function renderSettings() {
+  document.getElementById("nameInput").value = DB.student.name || "";
+  document.getElementById("gradeInput").value = DB.student.grade || "";
+  document.getElementById("totalInput").value = DB.student.dictTotal || 8;
+  document.getElementById("clsInput").value = DB.student.clsTotal || 8;
+
+  const n = Object.keys(DB.records).length;
+  document.getElementById("dataInfo").textContent = "共 " + n + " 天记录。";
+
+  const last = DB.lastExportAt;
+  if (!last) {
+    document.getElementById("exportHint").innerHTML =
+      "<span style='color:#d6403a'>还没有导出过备份，建议现在就导一次。</span>";
+  } else {
+    const days = Math.round((parseISO(todayISO()) - parseISO(last)) / 86400000);
+    document.getElementById("exportHint").textContent =
+      "上次导出：" + last + (days >= 7 ? "（已超过 7 天）" : "（" + days + " 天前）");
+  }
+}
+
+document.getElementById("nameInput").addEventListener("change", e => {
+  DB.student.name = e.target.value.trim(); save(); renderTop();
+});
+document.getElementById("gradeInput").addEventListener("change", e => {
+  DB.student.grade = e.target.value.trim(); save(); renderTop();
+});
+document.getElementById("totalInput").addEventListener("change", e => {
+  let v = parseInt(e.target.value, 10);
+  if (!v || v < 1) v = 8;
+  if (v > 30) v = 30;
+  DB.student.dictTotal = v; save(); renderToday();
+});
+document.getElementById("clsInput").addEventListener("change", e => {
+  let v = parseInt(e.target.value, 10);
+  if (!v || v < 1) v = 8;
+  if (v > 30) v = 30;
+  DB.student.clsTotal = v; save(); renderToday();
+});
+
+document.getElementById("exportBtn").onclick = () => {
+  DB.lastExportAt = todayISO();
+  save();
+  const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "TutorTrace-备份-" + todayISO() + ".json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  renderSettings();
+};
+
+document.getElementById("importBtn").onclick = () => document.getElementById("fileInput").click();
+document.getElementById("fileInput").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const d = JSON.parse(fr.result);
+      if (!d || typeof d !== "object" || !d.records) throw new Error("格式不对");
+      if (!confirm("导入会覆盖当前全部记录，确定吗？")) return;
+      DB = {
+        version: 2,
+        student: Object.assign(blank().student, d.student || {}),
+        records: d.records || {},
+        focus: d.focus || {},
+        lastExportAt: d.lastExportAt || null
+      };
+      save();
+      renderAll();
+      toast("已导入");
+    } catch (err) {
+      alert("导入失败：" + err.message);
+    }
+  };
+  fr.readAsText(f);
+  e.target.value = "";
+});
+
+document.getElementById("clearBtn").onclick = () => {
+  if (!confirm("会删掉全部记录，且无法恢复。确定吗？")) return;
+  if (!confirm("再确认一次：真的清空？")) return;
+  DB = blank();
+  save();
+  renderAll();
+};
+
+/* =========================================================
+   导航与启动
+   ========================================================= */
+function renderTop() {
+  const s = DB.student;
+  document.getElementById("topSub").textContent =
+    (s.name || "未设置姓名") + (s.grade ? " · " + s.grade : "");
+}
+
+function switchView(v) {
+  ["today", "trend", "week", "set"].forEach(k => {
+    document.getElementById("v-" + k).hidden = (k !== v);
+  });
+  [...document.querySelectorAll(".tabbar button")].forEach(b => {
+    b.classList.toggle("on", b.dataset.v === v);
+  });
+  if (v === "trend") renderTrend();
+  if (v === "week") renderWeek();
+  if (v === "set") renderSettings();
+  window.scrollTo(0, 0);
+}
+
+document.querySelector(".tabbar").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b) switchView(b.dataset.v);
+});
+
+function renderAll() {
+  renderTop();
+  renderToday();
+  renderTrend();
+  renderWeek();
+  renderSettings();
+}
+
+renderAll();
+window.addEventListener("resize", () => { renderTrend(); });
+</script>
 </body>
 </html>
