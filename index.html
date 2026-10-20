@@ -70,13 +70,36 @@
   .legend{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}
   .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
   .four{display:grid;grid-template-columns:1fr 1fr;gap:14px 10px}
+  #gate{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+  #gate[hidden]{display:none}
+  .gate-box{width:100%;max-width:330px;display:grid;gap:10px;text-align:center}
+  .gate-box .logo{font-size:24px;font-weight:800;color:var(--brand);margin-bottom:10px}
+  .gate-box .btn{padding:14px}
+  .gate-box .sub{color:var(--muted);font-size:12px}
+  #bindCodeTxt{font-size:22px;font-weight:800;letter-spacing:6px;font-variant-numeric:tabular-nums}
+  .brow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .brow:last-child{border-bottom:0}
+  .mini{padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:12px;color:var(--bad)}
+  input:disabled,button:disabled{opacity:.55}
 </style>
 </head>
 <body>
+<div id="gate" hidden>
+  <div class="gate-box">
+    <div class="logo">TutorTrace</div>
+    <button class="btn primary" id="gateStu">我是学生 / 家长</button>
+    <button class="btn" id="gateTea">我是老师（只看记录）</button>
+    <div class="sub">选择后随时可以在「设置」里切换。</div>
+  </div>
+</div>
 <div class="top"><b>TutorTrace</b><select id="stuSelect" aria-label="选择学生"></select><span id="topSub"></span></div>
 <main>
   <!-- ============ 今天 ============ -->
   <section id="v-today">
+    <div class="card" id="noStuCard" hidden>
+      <b>还没有绑定学生。</b><br>
+      让学生在 TA 的设备上打开本页（设置 → 云同步）生成 6 位绑定码，然后到「设置 → 绑定学生」填入即可。
+    </div>
     <div class="card">
       <h3>日期</h3>
       <input type="date" id="dateInput">
@@ -191,7 +214,7 @@
 
   <!-- ============ 设置 ============ -->
   <section id="v-set" hidden>
-    <div class="card">
+    <div class="card" id="stuCard">
       <h3>学生</h3>
       <input type="text" id="nameInput" placeholder="姓名">
       <div style="height:8px"></div>
@@ -213,7 +236,42 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="syncCard" hidden>
+      <h3>云同步</h3>
+      <div class="row spread">
+        <span class="muted">绑定码</span>
+        <b id="bindCodeTxt">——————</b>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="genCodeBtn">生成绑定码</button>
+        <button class="btn" id="regenCodeBtn" hidden>重新生成</button>
+        <button class="btn primary" id="syncNowBtn" hidden>立即同步</button>
+      </div>
+      <div class="hint" id="syncHint"></div>
+    </div>
+
+    <div class="card" id="boundCard" hidden>
+      <h3>绑定学生</h3>
+      <div class="row">
+        <input type="text" id="bindCodeInput" inputmode="numeric" maxlength="6" placeholder="学生给的 6 位绑定码" style="flex:1;width:auto;min-width:0">
+        <button class="btn primary" id="bindAddBtn">绑定</button>
+      </div>
+      <div id="boundList" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="refreshBtn">立即刷新</button>
+      </div>
+      <div class="hint">打开页面会自动刷新一次，之后每 2 分钟同步一次。</div>
+    </div>
+
+    <div class="card" id="roleCard">
+      <h3>角色</h3>
+      <div class="row spread">
+        <span class="muted" id="roleNow">当前：学生 / 家长</span>
+        <button class="btn" id="switchRoleBtn">切换角色</button>
+      </div>
+    </div>
+
+    <div class="card" id="dataCard">
       <h3>数据</h3>
       <div class="row">
         <button class="btn" id="exportBtn">导出备份</button>
@@ -227,13 +285,13 @@
     <div class="card">
       <h3>说明</h3>
       <div class="muted" style="line-height:1.7">
-        TutorTrace 的数据只存在这台设备的浏览器里，不上传、不联网。<br>
-        换设备、换浏览器、清理缓存都会丢，所以每周导出一次备份，把 JSON 文件存到自己微信里最稳。<br>
+        TutorTrace 的数据保存在这台设备的浏览器里；开启云同步后，记录会同步到云端，只有凭 6 位绑定码才能查看。<br>
+        换设备、换浏览器、清理缓存都会丢本地数据，所以每周导出一次备份，把 JSON 文件存到自己微信里最稳。<br>
         手机浏览器菜单里选"添加到主屏幕"，用起来就和 App 一样。
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="clearCard">
       <button class="btn" id="clearBtn" style="color:var(--bad)">清空所有学生的记录</button>
     </div>
   </section>
@@ -260,7 +318,7 @@ function uid() {
   return "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 function newStudentObj(name) {
-  return { id: uid(), name: name || "", grade: "", dictTotal: 8, clsTotal: 8 };
+  return { id: uid(), name: name || "", grade: "", dictTotal: 8, clsTotal: 8, bindCode: "" };
 }
 function blank() {
   const s = newStudentObj("");
@@ -282,7 +340,8 @@ function toV3(d) {
       name: s.name || "",
       grade: s.grade || "",
       dictTotal: s.dictTotal || 8,
-      clsTotal: s.clsTotal || 8
+      clsTotal: s.clsTotal || 8,
+      bindCode: s.bindCode || ""
     }));
     const records = d.records || {}, focus = d.focus || {};
     students.forEach(s => {
@@ -322,6 +381,80 @@ function toV3(d) {
 
 let DB = load();
 
+/* =========================================================
+   云同步（Supabase）与角色
+   ========================================================= */
+const SB_URL = "https://vxnwaappitqwkzsfjhaz.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4bndhYXBwaXRxd2t6c2ZqaGF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0OTQ5NjMsImV4cCI6MjEwODA3MDk2M30.d2eVnH8ItV9WjiVWmA0_BIFJoZ4htfUNqcFHKfdd7uU";
+
+let ROLE = localStorage.getItem("ttRole") || "";   // "student" | "teacher" | ""
+let TDB = emptyDS();                               // 老师端数据：从云端拉取构建，结构与 DB 同构
+
+function emptyDS() {
+  return { version: 3, students: [], curId: null, records: {}, focus: {}, lastExportAt: null };
+}
+function DS() { return ROLE === "teacher" ? TDB : DB; }
+
+async function sbRpc(fn, body) {
+  const r = await fetch(SB_URL + "/rest/v1/rpc/" + fn, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SB_KEY, Authorization: "Bearer " + SB_KEY },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error("RPC " + fn + " HTTP " + r.status);
+  return r.json();
+}
+
+function getBound() {
+  try { return JSON.parse(localStorage.getItem("ttBound") || "[]"); } catch (e) { return []; }
+}
+function setBound(a) { localStorage.setItem("ttBound", JSON.stringify(a)); }
+function syncTimes() {
+  try { return JSON.parse(localStorage.getItem("ttSyncAt") || "{}"); } catch (e) { return {}; }
+}
+
+// 老师端：按绑定码逐个拉取云端数据，构建 TDB
+let pulling = false;
+async function pullBound() {
+  if (pulling) return;
+  pulling = true;
+  try {
+    const bound = getBound();
+    const db = emptyDS();
+    for (const b of bound) {
+      try {
+        const res = await sbRpc("get_sync", { p_code: b.code });
+        let p = Array.isArray(res) ? res[0] : res;
+        // get_sync 返回整行 {name, grade, payload, bind_code, updated_at}；兼容直接返回 payload 的情况
+        if (p && typeof p === "object" && p.payload && typeof p.payload === "object") {
+          const row = p;
+          p = Object.assign({}, row.payload);
+          p.name = row.name || p.name || "";
+          p.grade = row.grade || p.grade || "";
+        }
+        if (p && typeof p === "object") {
+          const stu = {
+            id: "b" + b.code,
+            name: p.name || b.name || "",
+            grade: p.grade || b.grade || "",
+            dictTotal: p.dictTotal || 8,
+            clsTotal: p.clsTotal || 8,
+            bindCode: b.code
+          };
+          db.students.push(stu);
+          db.records[stu.id] = (p.records && typeof p.records === "object") ? p.records : {};
+          db.focus[stu.id] = (p.focus && typeof p.focus === "object") ? p.focus : {};
+        }
+      } catch (e) { console.warn("拉取失败", b.code, e); }
+    }
+    const prev = TDB.curId;
+    db.curId = db.students.some(x => x.id === prev) ? prev : (db.students[0] ? db.students[0].id : null);
+    TDB = db;
+  } finally {
+    pulling = false;
+  }
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
@@ -334,19 +467,24 @@ function load() {
 }
 
 function curStu() {
-  let s = DB.students.find(x => x.id === DB.curId);
-  if (!s) { s = DB.students[0]; DB.curId = s.id; }
-  return s;
+  const db = DS();
+  let s = db.students.find(x => x.id === db.curId);
+  if (!s && db.students.length) { s = db.students[0]; db.curId = s.id; }
+  return s || null;
 }
 function bucket() {
-  const id = curStu().id;
-  if (!DB.records[id] || typeof DB.records[id] !== "object") DB.records[id] = {};
-  return DB.records[id];
+  const s = curStu();
+  if (!s) return {};
+  const db = DS();
+  if (!db.records[s.id] || typeof db.records[s.id] !== "object") db.records[s.id] = {};
+  return db.records[s.id];
 }
 function focusBucket() {
-  const id = curStu().id;
-  if (!DB.focus[id] || typeof DB.focus[id] !== "object") DB.focus[id] = {};
-  return DB.focus[id];
+  const s = curStu();
+  if (!s) return {};
+  const db = DS();
+  if (!db.focus[s.id] || typeof db.focus[s.id] !== "object") db.focus[s.id] = {};
+  return db.focus[s.id];
 }
 
 function save() {
@@ -356,6 +494,96 @@ function save() {
   } catch (e) {
     toast("保存失败：存储空间可能满了");
   }
+  scheduleSync();
+}
+
+/* ---- 学生端：改完 1.5 秒后自动推送到云端 ---- */
+let syncTimer = null, syncRetry = 0;
+function scheduleSync() {
+  if (ROLE !== "student") return;
+  const s = curStu();
+  if (!s || !s.bindCode) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => pushSync(false), 1500);
+}
+
+async function pushSync(manual) {
+  if (ROLE !== "student") return;
+  const s = curStu();
+  if (!s || !s.bindCode) return;
+  try {
+    await sbRpc("upsert_sync", {
+      p_code: s.bindCode,
+      p_name: s.name || "",
+      p_grade: s.grade || "",
+      p_payload: {
+        name: s.name || "", grade: s.grade || "",
+        dictTotal: s.dictTotal || 8, clsTotal: s.clsTotal || 8,
+        records: DB.records[s.id] || {}, focus: DB.focus[s.id] || {}
+      }
+    });
+    syncRetry = 0;
+    const m = syncTimes(); m[s.id] = Date.now();
+    localStorage.setItem("ttSyncAt", JSON.stringify(m));
+    if (manual) toast("已同步到云端");
+    renderSyncHint();
+  } catch (e) {
+    console.warn("同步失败", e);
+    if (manual) toast("同步失败，检查网络后再试");
+    else if (syncRetry < 3) { syncRetry++; setTimeout(() => pushSync(false), 8000 * syncRetry); }
+  }
+}
+
+// 生成 6 位绑定码（先查云端确认没被占用）
+async function genCode(force) {
+  const s = curStu();
+  if (!s) return;
+  if (force && s.bindCode && !confirm("重新生成后，旧绑定码马上失效，老师那边要重新绑定。确定？")) return;
+  const old = s.bindCode;
+  toast("正在生成…");
+  for (let i = 0; i < 8; i++) {
+    const c = String(Math.floor(100000 + Math.random() * 900000));
+    try {
+      const res = await sbRpc("get_sync", { p_code: c });
+      const row = Array.isArray(res) ? res[0] : res;
+      if (row === null || row === undefined) {
+        s.bindCode = c;
+        save();
+        renderSettings();
+        pushSync(true);
+        if (old && old !== c) {
+          sbRpc("upsert_sync", { p_code: old, p_name: "", p_grade: "", p_payload: { name: "", grade: "", records: {}, focus: {} } }).catch(() => {});
+        }
+        return;
+      }
+    } catch (e) {
+      toast("生成失败，检查网络后再试");
+      return;
+    }
+  }
+  toast("没分到空闲的码，请再试一次");
+}
+
+function renderSyncCard() {
+  const s = curStu();
+  if (!s) return;
+  const has = !!s.bindCode;
+  document.getElementById("bindCodeTxt").textContent = has ? s.bindCode : "——————";
+  document.getElementById("regenCodeBtn").hidden = !has;
+  document.getElementById("syncNowBtn").hidden = !has;
+  renderSyncHint();
+}
+function renderSyncHint() {
+  const s = curStu();
+  const el = document.getElementById("syncHint");
+  if (!s || !el) return;
+  if (!s.bindCode) {
+    el.textContent = "生成 6 位绑定码后告诉老师，记录就会自动同步到云端——只有凭这个码才能看到。";
+    return;
+  }
+  const t = syncTimes()[s.id];
+  el.textContent = "凭这个码可以看到这份记录。" +
+    (t ? "　上次同步 " + new Date(t).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }) : "　还没同步过");
 }
 
 let toastTimer = null;
@@ -461,7 +689,7 @@ function renderToday() {
     const tEl = document.getElementById(cfg.totalId);
     const wEl = document.getElementById(cfg.wrongId);
     const cur = r[cfg.kind];
-    const fallbackTotal = cfg.kind === "dict" ? (curStu().dictTotal || 8) : (curStu().clsTotal || 8);
+    const fallbackTotal = cfg.kind === "dict" ? ((curStu() || {}).dictTotal || 8) : ((curStu() || {}).clsTotal || 8);
     if (document.activeElement !== tEl) tEl.value = cur ? cur.total : fallbackTotal;
     if (document.activeElement !== wEl) wEl.value = cur ? cur.wrong : 0;
 
@@ -478,6 +706,7 @@ function renderToday() {
     const b = document.createElement("button");
     b.textContent = L;
     if (r.hw && r.hw.level === L) b.className = "on";
+    b.disabled = ROLE === "teacher";
     b.onclick = () => { setLevel(curDate, L); renderToday(); renderTrend(); };
     lg.appendChild(b);
   });
@@ -779,6 +1008,7 @@ function renderWeek() {
     const b = document.createElement("button");
     b.textContent = t;
     if (saved === t) b.className = "on";
+    b.disabled = ROLE === "teacher";
     b.onclick = () => {
       focusBucket()[st.start] = t;
       save();
@@ -818,7 +1048,7 @@ function buildReport() {
   c.fillStyle = "#2f6fed"; c.fillRect(0, 0, W, 12);
 
   const F = (size, weight) => (weight || "400") + " " + size + "px -apple-system,'PingFang SC','Microsoft YaHei',sans-serif";
-  const stu = curStu();
+  const stu = curStu() || { name: "", grade: "", dictTotal: 8 };
   const name = stu.name || "学生";
   const grade = stu.grade ? " · " + stu.grade : "";
 
@@ -957,24 +1187,28 @@ document.getElementById("genBtn").onclick = () => {
    设置
    ========================================================= */
 function renderSettings() {
+  if (ROLE === "teacher") { renderBoundList(); return; }
   const s = curStu();
-  document.getElementById("nameInput").value = s.name || "";
-  document.getElementById("gradeInput").value = s.grade || "";
-  document.getElementById("totalInput").value = s.dictTotal || 8;
-  document.getElementById("clsInput").value = s.clsTotal || 8;
+  if (s) {
+    document.getElementById("nameInput").value = s.name || "";
+    document.getElementById("gradeInput").value = s.grade || "";
+    document.getElementById("totalInput").value = s.dictTotal || 8;
+    document.getElementById("clsInput").value = s.clsTotal || 8;
+  }
+  renderSyncCard();
 
   const days = Object.keys(bucket()).filter(k => Object.keys(bucket()[k]).length).length;
   document.getElementById("dataInfo").textContent =
-    "当前学生 " + days + " 天记录 · 共 " + DB.students.length + " 个学生。";
+    "当前学生 " + days + " 天记录 · 共 " + DS().students.length + " 个学生。";
 
-  const last = DB.lastExportAt;
+  const last = DS().lastExportAt;
   if (!last) {
     document.getElementById("exportHint").innerHTML =
       "<span style='color:#d6403a'>还没有导出过备份，建议现在就导一次。</span>";
   } else {
-    const days = Math.round((parseISO(todayISO()) - parseISO(last)) / 86400000);
+    const dd = Math.round((parseISO(todayISO()) - parseISO(last)) / 86400000);
     document.getElementById("exportHint").textContent =
-      "上次导出：" + last + (days >= 7 ? "（已超过 7 天）" : "（" + days + " 天前）");
+      "上次导出：" + last + (dd >= 7 ? "（已超过 7 天）" : "（" + dd + " 天前）");
   }
 }
 
@@ -1066,26 +1300,132 @@ document.getElementById("clearBtn").onclick = () => {
 };
 
 /* =========================================================
+   云同步 / 绑定 / 角色切换
+   ========================================================= */
+document.getElementById("genCodeBtn").onclick = () => genCode(false);
+document.getElementById("regenCodeBtn").onclick = () => genCode(true);
+document.getElementById("syncNowBtn").onclick = () => pushSync(true);
+
+document.getElementById("bindAddBtn").onclick = async () => {
+  const inp = document.getElementById("bindCodeInput");
+  const code = (inp.value || "").replace(/\D/g, "");
+  if (code.length !== 6) { toast("要填 6 位数字的绑定码"); return; }
+  if (getBound().some(b => b.code === code)) { toast("这个码已经绑过了"); inp.value = ""; return; }
+  toast("正在查询…");
+  try {
+    const res = await sbRpc("get_sync", { p_code: code });
+    const p = Array.isArray(res) ? res[0] : res;
+    if (!p || typeof p !== "object") { toast("查不到这个码，让学生确认一下"); return; }
+    const bound = getBound();
+    bound.push({ code: code, name: p.name || ("学生 " + code), grade: p.grade || "" });
+    setBound(bound);
+    inp.value = "";
+    await pullBound();
+    renderAll();
+    toast("已绑定");
+  } catch (e) {
+    toast("查询失败，检查网络后再试");
+  }
+};
+
+document.getElementById("boundList").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-i]");
+  if (!btn) return;
+  const i = Number(btn.dataset.i);
+  const bound = getBound();
+  const b = bound[i];
+  if (!b) return;
+  if (!confirm("解绑「" + (b.name || b.code) + "」？以后要重新输码。")) return;
+  bound.splice(i, 1);
+  setBound(bound);
+  pullBound().then(renderAll);
+});
+
+document.getElementById("refreshBtn").onclick = async () => {
+  toast("刷新中…");
+  await pullBound();
+  renderAll();
+  toast("已刷新");
+};
+
+function renderBoundList() {
+  const box = document.getElementById("boundList");
+  const bound = getBound();
+  if (!bound.length) {
+    box.innerHTML = "<div class='muted'>还没有绑定。让学生在 TA 的设备上打开本页，在「设置 → 云同步」生成绑定码，把码填到上面。</div>";
+    return;
+  }
+  box.innerHTML = bound.map((b, i) =>
+    "<div class='brow'><b>" + escapeHTML(b.name || ("学生 " + b.code)) + "</b>" +
+    "<span class='muted'>" + escapeHTML(b.grade || "") + "</span>" +
+    "<span class='muted' style='margin-left:auto;letter-spacing:2px'>" + b.code + "</span>" +
+    "<button class='mini' data-i='" + i + "'>解绑</button></div>"
+  ).join("");
+}
+
+function applyRoleUI() {
+  const t = ROLE === "teacher";
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.hidden = !on; };
+  show("syncCard", !t);
+  show("boundCard", t);
+  show("stuCard", !t);
+  show("dataCard", !t);
+  show("clearCard", !t);
+  show("noStuCard", t && !DS().students.length);
+  ["dictTotal", "dictWrong", "clsTotal", "clsWrong", "noteInput",
+   "nameInput", "gradeInput", "totalInput", "clsInput", "focusInput"]
+    .forEach(id => { const el = document.getElementById(id); if (el) el.disabled = t; });
+  const rn = document.getElementById("roleNow");
+  if (rn) rn.textContent = t ? "当前：老师（只看记录）" : "当前：学生 / 家长";
+}
+
+async function setRole(r) {
+  ROLE = r;
+  localStorage.setItem("ttRole", r);
+  document.getElementById("gate").hidden = true;
+  applyRoleUI();
+  if (r === "teacher") await pullBound();
+  renderAll();
+  switchView("today");
+  toast(r === "teacher" ? "已切换到老师端" : "已切换到学生端");
+}
+
+document.getElementById("gateStu").onclick = () => setRole("student");
+document.getElementById("gateTea").onclick = () => setRole("teacher");
+document.getElementById("switchRoleBtn").onclick = () => {
+  const to = ROLE === "teacher" ? "student" : "teacher";
+  if (!confirm(to === "teacher"
+    ? "切换到老师端？老师端只能查看绑定的学生记录，不能修改。"
+    : "切换回学生 / 家长端？")) return;
+  setRole(to);
+};
+
+/* =========================================================
    导航与启动
    ========================================================= */
 function renderTop() {
+  const db = DS();
   const s = curStu();
   const sel = document.getElementById("stuSelect");
   sel.innerHTML = "";
-  DB.students.forEach(st => {
+  db.students.forEach(st => {
     const o = document.createElement("option");
     o.value = st.id;
     o.textContent = st.name || "未命名";
-    if (st.id === DB.curId) o.selected = true;
+    if (st.id === db.curId) o.selected = true;
     sel.appendChild(o);
   });
-  document.getElementById("topSub").textContent = s.grade || "";
+  document.getElementById("topSub").textContent =
+    ROLE === "teacher"
+      ? ("老师端" + (s && s.grade ? " · " + s.grade : ""))
+      : (s ? (s.grade || "") : "");
 }
 
 function switchStudent(id) {
-  if (!DB.students.some(x => x.id === id) || id === DB.curId) return;
-  DB.curId = id;
-  save();
+  const db = DS();
+  if (!db.students.some(x => x.id === id) || id === db.curId) return;
+  db.curId = id;
+  if (ROLE !== "teacher") save();
   renderAll();
 }
 
@@ -1112,6 +1452,7 @@ document.querySelector(".tabbar").addEventListener("click", e => {
 });
 
 function renderAll() {
+  applyRoleUI();
   renderTop();
   renderToday();
   renderTrend();
@@ -1119,7 +1460,24 @@ function renderAll() {
   renderSettings();
 }
 
+/* ---- 启动 ---- */
+if (!ROLE) document.getElementById("gate").hidden = false;
+applyRoleUI();
 renderAll();
+if (ROLE === "teacher") pullBound().then(renderAll);
+if (ROLE === "student" && curStu() && curStu().bindCode) pushSync(false);
+
+// 老师端：每 2 分钟自动刷新；回到前台立即刷新
+setInterval(() => {
+  if (ROLE === "teacher" && !document.hidden) {
+    pullBound().then(() => { if (ROLE === "teacher") renderAll(); });
+  }
+}, 120000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && ROLE === "teacher") {
+    pullBound().then(() => { if (ROLE === "teacher") renderAll(); });
+  }
+});
 window.addEventListener("resize", () => { renderTrend(); });
 </script>
 </body>
