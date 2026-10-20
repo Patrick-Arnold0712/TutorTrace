@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TutorTrace</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+        }
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        button {
+            background: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background: var(--primary-dark);
+        }
+        .btn-secondary {
+            background: var(--secondary);
+        }
+        .btn-secondary:hover {
+            background: #475569;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .stat-card {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .session-list {
+            list-style: none;
+        }
+        .session-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .session-item:last-child {
+            border-bottom: none;
+        }
+        .session-info h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+        .session-info p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-active {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+        }
+        .badge-completed {
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+        }
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .action-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        .btn-start {
+            background: var(--success);
+        }
+        .btn-start:hover {
+            background: #16a34a;
+        }
+        .btn-end {
+            background: var(--warning);
+        }
+        .btn-end:hover {
+            background: #d97706;
+        }
+        .btn-delete {
+            background: var(--danger);
+        }
+        .btn-delete:hover {
+            background: #dc2626;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .modal-close {
+            background: none;
+            padding: 0.5rem;
+            font-size: 1.5rem;
+        }
+        .export-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TutorTrace</h1>
+            <p class="subtitle">学习辅导跟踪系统</p>
+        </header>
+
+        <div class="card">
+            <h2>新建辅导记录</h2>
+            <form id="sessionForm">
+                <div class="form-group">
+                    <label for="studentName">学生姓名</label>
+                    <input type="text" id="studentName" required placeholder="输入学生姓名">
+                </div>
+                <div class="form-group">
+                    <label for="subject">科目</label>
+                    <select id="subject" required>
+                        <option value="">选择科目</option>
+                        <option value="math">数学</option>
+                        <option value="english">英语</option>
+                        <option value="physics">物理</option>
+                        <option value="chemistry">化学</option>
+                        <option value="biology">生物</option>
+                        <option value="history">历史</option>
+                        <option value="geography">地理</option>
+                        <option value="programming">编程</option>
+                        <option value="other">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date">日期</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="duration">时长（分钟）</label>
+                    <input type="number" id="duration" min="15" max="300" required placeholder="30">
+                </div>
+                <div class="form-group">
+                    <label for="notes">备注</label>
+                    <textarea id="notes" placeholder="记录本次辅导的要点..."></textarea>
+                </div>
+                <button type="submit">保存记录</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>辅导记录</h2>
+                <button class="btn-secondary" onclick="exportData()">导出数据</button>
+            </div>
+            <div id="statsGrid" class="stats-grid"></div>
+            <div id="sessionList" class="session-list"></div>
+            <div id="emptyState" class="empty-state">
+                <p>暂无辅导记录，添加第一条记录开始吧！</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="endSessionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>结束辅导</h3>
+                <button class="modal-close" onclick="closeEndSessionModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label for="endNotes">结束备注</label>
+                <textarea id="endNotes" placeholder="记录本次辅导的总结..."></textarea>
+            </div>
+            <button onclick="confirmEndSession()">确认结束</button>
+        </div>
+    </div>
+
+    <script>
+        // 应用状态
+        let state = {
+            sessions: [],
+            currentSession: null
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
+            setupEventListeners();
+            render();
+            // 设置默认日期为今天
+            document.getElementById('date').valueAsDate = new Date();
+        });
+
+        // 从localStorage加载数据
+        function loadFromStorage() {
+            const saved = localStorage.getItem('tutorTraceData');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    state.sessions = data.sessions || [];
+                    state.currentSession = data.currentSession || null;
+                } catch (e) {
+                    console.error('Failed to load data:', e);
+                }
+            }
+        }
+
+        // 保存到localStorage
+        function saveToStorage() {
+            const data = {
+                sessions: state.sessions,
+                currentSession: state.currentSession
+            };
+            localStorage.setItem('tutorTraceData', JSON.stringify(data));
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            document.getElementById('sessionForm').addEventListener('submit', handleFormSubmit);
+        }
+
+        // 处理表单提交
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const formData = {
+                id: Date.now().toString(),
+                studentName: document.getElementById('studentName').value.trim(),
+                subject: document.getElementById('subject').value,
+                date: document.getElementById('date').value,
+                duration: parseInt(document.getElementById('duration').value),
+                notes: document.getElementById('notes').value.trim(),
+                createdAt: new Date().toISOString()
+            };
+            
+            state.sessions.unshift(formData);
+            saveToStorage();
+            render();
+            document.getElementById('sessionForm').reset();
+            document.getElementById('date').valueAsDate = new Date();
+        }
+
+        // 开始辅导会话
+        function startSession(id) {
+            const session = state.sessions.find(s => s.id === id);
+            if (session && !session.endTime) {
+                state.currentSession = id;
+                session.startTime = new Date().toISOString();
+                saveToStorage();
+                render();
+            }
+        }
+
+        // 显示结束会话对话框
+        function showEndSessionModal(id) {
+            state.tempEndId = id;
+            document.getElementById('endSessionModal').classList.add('active');
+        }
+
+        // 关闭结束会话对话框
+        function closeEndSessionModal() {
+            document.getElementById('endSessionModal').classList.remove('active');
+            state.tempEndId = null;
+        }
+
+        // 确认结束会话
+        function confirmEndSession() {
+            const endNotes = document.getElementById('endNotes').value.trim();
+            const session = state.sessions.find(s => s.id === state.tempEndId);
+            
+            if (session) {
+                session.endTime = new Date().toISOString();
+                session.endNotes = endNotes;
+                session.status = 'completed';
+                state.currentSession = null;
+                saveToStorage();
+                render();
+                closeEndSessionModal();
+                document.getElementById('endNotes').value = '';
+            }
+        }
+
+        // 删除会话
+        function deleteSession(id) {
+            if (confirm('确定要删除这条记录吗？')) {
+                state.sessions = state.sessions.filter(s => s.id !== id);
+                if (state.currentSession === id) {
+                    state.currentSession = null;
+                }
+                saveToStorage();
+                render();
+            }
+        }
+
+        // 导出数据
+        function exportData() {
+            const dataStr = JSON.stringify(state.sessions, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tutortrace-export-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 渲染界面
+        function render() {
+            renderStats();
+            renderSessionList();
+        }
+
+        // 渲染统计信息
+        function renderStats() {
+            const statsGrid = document.getElementById('statsGrid');
+            const totalSessions = state.sessions.length;
+            const completedSessions = state.sessions.filter(s => s.status === 'completed').length;
+            const totalHours = state.sessions.reduce((sum, s) => {
+                if (s.startTime && s.endTime) {
+                    const start = new Date(s.startTime);
+                    const end = new Date(s.endTime);
+                    return sum + (end - start) / (1000 * 60 * 60);
+                }
+                return sum;
+            }, 0);
+            
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${totalSessions}</div>
+                    <div class="stat-label">总辅导次数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${completedSessions}</div>
+                    <div class="stat-label">已完成</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${totalHours.toFixed(1)}h</div>
+                    <div class="stat-label">总时长</div>
+                </div>
+            `;
+        }
+
+        // 渲染会话列表
+        function renderSessionList() {
+            const sessionList = document.getElementById('sessionList');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (state.sessions.length === 0) {
+                sessionList.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            sessionList.innerHTML = state.sessions.map(session => {
+                const start = session.startTime ? new Date(session.startTime) : null;
+                const end = session.endTime ? new Date(session.endTime) : null;
+                const duration = start && end ? Math.round((end - start) / 60000) : null;
+                
+                return `
+                    <div class="session-item">
+                        <div class="session-info">
+                            <h3>${session.studentName} - ${session.subject}</h3>
+                            <p>${session.date} ${duration ? `• ${duration}分钟` : ''}</p>
+                        </div>
+                        <div class="actions">
+                            ${!session.startTime ? 
+                                `<button class="action-btn btn-start" onclick="startSession('${session.id}')">开始</button>` : 
+                                `<button class="action-btn btn-end" onclick="showEndSessionModal('${session.id}')">结束</button>`
+                            }
+                            <button class="action-btn btn-delete" onclick="deleteSession('${session.id}')">删除</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 格式化日期
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>
